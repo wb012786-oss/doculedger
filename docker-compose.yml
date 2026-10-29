@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - UPLOAD_DIR=/tmp/bank_uploads
+      - MAX_FILE_SIZE_MB=20
+      - MAX_FILES=5
+    restart: unless-stopped
+    # 限制资源，避免占满 InstaBox
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G

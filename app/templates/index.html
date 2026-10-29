@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>银行对账单一键标准化 | 隐私优先</title>
+  <style>
+    :root {
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #059669;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    header { text-align: center; margin-bottom: 32px; }
+    header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
+    header p { color: var(--muted); font-size: 0.95rem; }
+    .badge {
+      display: inline-block;
+      background: #ecfdf5;
+      color: var(--success);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 6px;
+      font-weight: 600;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      margin-bottom: 20px;
+    }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #f8fafc;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: #eff6ff;
+    }
+    .dropzone .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .dropzone p { color: var(--muted); font-size: 0.9rem; }
+    .dropzone strong { color: var(--primary); }
+    input[type="file"] { display: none; }
+    .file-list { margin-top: 16px; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 0.875rem;
+    }
+    .file-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+    .file-item .remove { color: var(--danger); cursor: pointer; font-size: 0.8rem; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 16px;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    @media (max-width: 500px) { .features { grid-template-columns: 1fr; } }
+    .feat {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.85rem;
+    }
+    .feat strong { display: block; margin-bottom: 4px; }
+    .privacy-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 0.85rem;
+      color: #166534;
+    }
+    .privacy-box a { color: var(--primary); }
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .status.loading { display: block; background: #eff6ff; color: #1e40af; }
+    .status.error { display: block; background: #fef2f2; color: var(--danger); }
+    .status.success { display: block; background: #f0fdf4; color: var(--success); }
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>银行对账单一键标准化 <span class="badge">隐私优先</span></h1>
+      <p>上传 PDF / Excel / CSV，自动转标准格式 Excel，带异常检测与对账差异</p>
+	  <p style="color:#64748b;font-size:0.85rem;margin-top:6px;">
+	     目前对文字型 PDF / Excel / CSV 效果最好；扫描件请人工复核
+	  </p >
+    </header>
+
+    <div class="card">
+      <div class="dropzone" id="dropzone">
+        <div class="icon">📄</div>
+        <p><strong>点击选择</strong> 或拖拽文件到此处</p>
+        <p style="margin-top:8px;font-size:0.8rem;">支持 PDF（含扫描件 OCR）、Excel、CSV · 单文件 ≤ {{ max_size_mb }}MB · 最多 {{ max_files }} 个</p>
+        <input type="file" id="fileInput" multiple accept=".pdf,.xlsx,.xls,.csv" />
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div style="margin-top:16px;">
+        <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:6px;">
+          可选：处理完成后推送摘要到企业微信 / 飞书（仅汇总，不含流水明细）
+        </label>
+        <input type="url" id="webhookInput" placeholder="粘贴群机器人 Webhook 地址（可留空）"
+          style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+      </div>
+      <button class="btn" id="submitBtn" disabled>开始处理并下载结果</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px;font-size:1rem;">第一版已支持</h3>
+      <div class="features">
+        <div class="feat"><strong>多格式解析</strong>文本型银行 PDF、Excel、CSV 自动识别表格</div>
+        <div class="feat"><strong>标准输出</strong>交易日期 / 摘要 / 金额 / 余额 / 类型 统一格式</div>
+        <div class="feat"><strong>异常提示</strong>大额交易、疑似重复、日期缺失自动标出</div>
+        <div class="feat"><strong>双文件对账</strong>上传两份流水自动找出差异项</div>
+        <div class="feat"><strong>银行识别</strong>工行/建行/招行等主流银行关键词识别</div>
+        <div class="feat"><strong>处理即删</strong>文件不落库，处理完立即删除</div>
+        <div class="feat"><strong>OCR 扫描件</strong>图片型 PDF 自动尝试中文 OCR 识别</div>
+        <div class="feat"><strong>微信/飞书推送</strong>可选推送汇总结果到群机器人</div>
+      </div>
+    </div>
+
+    <div class="privacy-box">
+      <strong>隐私承诺</strong><br>
+      您的银行流水仅在临时目录中处理，完成后立即删除，不存储、不用于训练、不分享第三方。
+      本工具仅供辅助整理，正式记账/报税请人工复核。
+      <a href="/privacy">完整隐私说明 →</a>
+    </div>
+
+    <footer>
+      <p>Bank Reconciler v1.0 · 本地/私有部署友好 · <a href="https://github.com" target="_blank" rel="noopener">开源</a></p>
+    </footer>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusEl = document.getElementById('status');
+    let selectedFiles = [];
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => addFiles(fileInput.files));
+
+    function addFiles(fileListObj) {
+      const max = {{ max_files }};
+      for (const f of fileListObj) {
+        if (selectedFiles.length >= max) break;
+        if (!selectedFiles.some(x => x.name === f.name && x.size === f.size)) {
+          selectedFiles.push(f);
+        }
+      }
+      renderList();
+    }
+
+    function renderList() {
+      fileList.innerHTML = '';
+      selectedFiles.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        div.innerHTML = `<span class="name">${f.name} (${(f.size/1024).toFixed(1)} KB)</span>
+          <span class="remove" data-i="${i}">移除</span>`;
+        fileList.appendChild(div);
+      });
+      fileList.querySelectorAll('.remove').forEach(el => {
+        el.addEventListener('click', () => {
+          selectedFiles.splice(+el.dataset.i, 1);
+          renderList();
+        });
+      });
+      submitBtn.disabled = selectedFiles.length === 0;
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      if (selectedFiles.length === 0) return;
+      submitBtn.disabled = true;
+      statusEl.className = 'status loading';
+      statusEl.textContent = '正在解析并生成标准 Excel，请稍候…（大文件可能需要 10–30 秒）';
+
+      const form = new FormData();
+      selectedFiles.forEach(f => form.append('files', f));
+      const webhook = (document.getElementById('webhookInput').value || '').trim();
+      if (webhook) form.append('webhook', webhook);
+
+      try {
+        const res = await fetch('/api/process', { method: 'POST', body: form });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `处理失败 (${res.status})`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '银行流水标准化结果.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        const rows = res.headers.get('X-Row-Count') || '?';
+        const anomalies = res.headers.get('X-Anomaly-Count') || '0';
+        const notify = res.headers.get('X-Notify');
+        let extra = '';
+        if (notify === 'ok') extra = ' · 已推送摘要到群';
+        else if (notify === 'fail') extra = ' · 群推送失败（不影响下载）';
+        statusEl.className = 'status success';
+        statusEl.textContent = `处理完成！共 ${rows} 笔交易，发现 ${anomalies} 处异常提示。文件已开始下载。${extra}`;
+        selectedFiles = [];
+        renderList();
+      } catch (e) {
+        statusEl.className = 'status error';
+        statusEl.textContent = e.message || '处理失败，请重试';
+      } finally {
+        submitBtn.disabled = selectedFiles.length === 0;
+      }
+    });
+  </script>
+</body>
+</html>
